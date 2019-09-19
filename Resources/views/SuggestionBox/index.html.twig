@@ -1,0 +1,546 @@
+{% extends 'app.layout.html.twig' %}
+{% block stylesheets %}
+    <link href="{{asset('assets/vendor/datetimepicker/bootstrap-datetimepicker.min.css')}}" rel="stylesheet">
+    <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.min.css" rel="stylesheet">
+  <style>
+      hr {
+        -moz-border-bottom-colors: none;
+        -moz-border-image: none;
+        -moz-border-left-colors: none;
+        -moz-border-right-colors: none;
+        -moz-border-top-colors: none;
+        border-color: #EEEEEE -moz-use-text-color #FFFFFF;
+        border-style: solid none;
+        border-width: 1px 0;
+        margin: 18px 0;
+      }
+  </style>
+{% endblock stylesheets %}
+{% block content %}
+
+
+    {% set url_external = path('app_external') %}
+    {% set url_google = path('app_google_tool') %}
+    {% set add_suggest = path('app_suggestionbox_addsuggestion') %}
+    {% set update_suggest_r = 'app_suggestionbox_updatesuggestion' %}
+    {% set update_suggest_status_r = 'app_suggestionbox_updatesuggestionstatus' %}
+    {% set update_suggest_plan_r = 'app_suggestionbox_updatesuggestionplan' %}
+    {% set rate_suggest = path('app_suggestionbox_ratesuggestion') %}
+
+
+    <section id="suggestionpage" class="main-container">
+        <!-- breadcum -->
+        <div class="">
+            <nav class="breadcrumb">
+              <a class="breadcrumb-item" href="#">{{ 'home' | trans | capitalize }} / </a>
+              <span class="breadcrumb-item active">{{ 'module.suggest_box' | trans | capitalize }}</span>
+            </nav>
+        </div>
+        <!-- Suggestion list -->
+        <div class="container-fluid main-boby">
+            <div class="home-header">
+            <h1>{{ 'module.suggest_box' | trans | capitalize }}</h1>
+                <hr class="divider">
+                <h3 class="h3-title">{{ 'suggestion.text.idea_title' | trans }}</h3>
+                <div style="float:right;margin-left:20px;margin-top:24px;width:100px;">
+                    <button onclick="sfilter()" type="button" class="btn btn-custom btn-primary " >{{ 'suggestion.button.filter' | trans }}</button>
+
+                </div>
+                <div style="float:right;margin-left:10px;width:100px;">
+                    <label for="filter_suggestion_status" class="form-control-label">{{ 'suggestion.label.status' | trans }}:</label>
+                    <select class="form-control" name="filter_suggestion_status" id="filter_suggestion_status"  >
+                        <option value="All" selected="selected" >{{ 'options.all' | trans }}</option>
+                        <option value="1"  >{{ 'options.select' | trans }}</option>
+                        <option value="2"  >{{ 'options.completed' | trans }}</option>
+                        <option value="3"  >{{ 'options.planed' | trans }}</option>
+                        <option value="4"  >{{ 'options.denied' | trans }}</option>
+                        <option value="5"  >{{ 'options.underreviews' | trans }}</option>
+                        <option value="6"  >{{ 'options.wehavethis' | trans }}</option>
+                    </select>
+
+                </div>
+
+                <div style="float:right;margin-left:10px;width:100px;">
+                    <label for="filter_category" class="form-control-label">{{ 'suggestion.label.category' | trans }}:</label>
+                    <select class="form-control" name="filter_category" id="filter_category">
+                        <option value="All"
+                                selected="selected">{{ 'category.all' | trans }}</option>
+                        <option value="Feature">{{ 'category.feature' | trans }}</option>
+                        <option value="Design">{{ 'category.design' | trans }}</option>
+                        <option value="Idea">{{ 'category.idea' | trans }}</option>
+                    </select>
+                </div>
+
+                <p>{{ 'suggestion.text.tooltip_title' | trans }}
+                    <i class="fa fa-question-circle " data-html="true" data-toggle="tooltip" data-placement="right" title="{{ 'suggestion.text.tooltip_description' | trans }}">
+                    </i>
+                </p>
+
+
+
+                <button type="button" class="btn btn-custom btn-primary " data-toggle="modal" data-target="#add-suggestion">{{ 'suggestion.button.add_suggestion' | trans }}</button>
+
+
+            </div>
+            <div class="content row content-wraper">
+                <div class="col-md-12">
+                    <table id="suggestion_table" class="table table-bordered table-middle">
+                      <thead>
+                        <tr>
+                          <th><strong>{{ 'suggestion.label.score' | trans }}</strong> &nbsp; <i onclick = "sort_suggestions()" class="fa fa-fw fa-sort"></i></th>
+                          <th><strong>{{ 'suggestion.label.category' | trans }}</strong></th>
+                          <th width="45%"><strong>{{ 'suggestion.label.description' | trans }}</strong></th>
+                          <th><strong>{{ 'suggestion.label.note' | trans }}</strong></th>
+                          <th><strong>{{ 'suggestion.label.status' | trans }}</strong></th>
+                          <th><strong>{{ 'suggestion.label.plancomplete' | trans }}</strong></th>
+                          <th><strong>{{ 'suggestion.label.actions' | trans }}</strong></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for suggest in suggestions %}
+                            <tr id="tr_suggest[{{ suggest[0].id }}]">
+                                <td><span class="rating-display" width="40%">
+                                            <i class="fa fa-star full"></i>
+                                        <div id="xxx__{{ suggest[0].id }}" style="padding-left:5px;display:inline;color:#ffa13e;font-size:18px;font-weight:bold;">{% if suggest['rating'] > 0 %} {{ suggest['rating'] | number_format(1) }} {% else %} 0 {% endif %}
+                                        </div>
+                                    </span><div style="padding:3px;"></div>
+                                    <span class="sgg-votes">{{ suggest['total'] }} VOTES</span></td>
+                                <td><div id="category[{{ suggest[0].id }}]">{{ suggest[0].category }}</div></td>
+                                <td class="minimize">{{ suggest[0].content | e}}</td>
+                                <td>
+                                    {%  if suggest['user_rating'] == 0 %}
+                                      <button type="button" class="btn btn-custom btn-primary rate-btn" data-toggle="modal" data-target="#rate-suggestion" data-suggestion-id="{{ suggest[0].id }}">{{ 'suggestion.label.evaluate' | trans }}</button>
+                                    {% else %}
+                                        <span class="rating-display">
+                                          {% set rounding_number = suggest['user_rating'] | round(1, 'ceil') | number_format()%}
+                                          {% for i in range(1,rounding_number ) %}
+                                            <i class="fa fa-star full"></i>
+                                          {% endfor %}
+                                          {% set empty = 5 - suggest['user_rating'] | round (1, 'floor') | number_format() %}
+                                          {% if empty > 0 %}
+                                            {% for i in range(1, empty) %}
+                                              <i class="fa fa-star empty"></i>
+                                            {% endfor %}
+                                          {% endif %}
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <!--
+                                    {% if suggest[0].suggestStatus  == 1 %}{{ 'options.select' | trans }}{% endif %}
+                                    {% if suggest[0].suggestStatus  == 2 %}{{ 'options.completed' | trans }}{% endif %}
+                                    {% if suggest[0].suggestStatus  == 3 %}{{ 'options.planed' | trans }}{% endif %}
+                                    {% if suggest[0].suggestStatus  == 4 %}{{ 'options.denied' | trans }}{% endif %}
+                                    {% if suggest[0].suggestStatus  == 5 %}{{ 'options.underreviews' | trans }}{% endif %}
+                                    {% if suggest[0].suggestStatus  == 6 %}{{ 'options.wehavethis' | trans }}{% endif %}
+                                    -->
+
+                                  <select class="form-control" id="suggestion_status[{{suggest[0].id}}]" onchange="updateSuggestionStatus({{suggest[0].id}})" name="suggestion_status[{{suggest[0].id}}]" {% if not is_admin %} disabled="disabled" {% endif %} >
+                                    <option value=1 {% if suggest[0].suggestStatus  == 1 %}selected="selected"{% endif %} >{{ 'options.select' | trans }}</option>
+                                    <option value=2 {% if suggest[0].suggestStatus  == 2 %}selected="selected"{% endif %} >{{ 'options.completed' | trans }}</option>
+                                    <option value=3 {% if suggest[0].suggestStatus  == 3 %}selected="selected"{% endif %} >{{ 'options.planed' | trans }}</option>
+                                    <option value=4 {% if suggest[0].suggestStatus  == 4 %}selected="selected"{% endif %} >{{ 'options.denied' | trans }}</option>
+                                    <option value=5 {% if suggest[0].suggestStatus  == 5 %}selected="selected"{% endif %} >{{ 'options.underreviews' | trans }}</option>
+                                    <option value=6 {% if suggest[0].suggestStatus  == 6 %}selected="selected"{% endif %} >{{ 'options.wehavethis' | trans }}</option>
+                                  </select>
+
+                                </td>
+                                <td>
+                                       <!--
+                                      {%  if suggest[0].planComplete %}
+                                      {{ suggest[0].planComplete.format("d M y")   }}
+                                      {%  endif %}
+                                      -->
+
+                                      <div id="suggestion_plan_date[{{suggest[0].id}}]" class='input-group date datetimepicker'>
+                                      <input type='text'  class="form-control" value="{%  if suggest[0].planComplete %}{{ suggest[0].planComplete.format("d M y")   }}{%  endif %}" {% if not is_admin %} disabled="disabled" {% endif %}  id="suggestion_plan[{{suggest[0].id}}]" name="suggestion_plan[{{suggest[0].id}}]" />
+                                      <span class="input-group-addon">
+                                          <span class="glyphicon glyphicon-calendar"></span>
+                                      </span>
+                                       </div>
+
+
+                                </td>
+                                {% if is_admin %}
+                                <td>
+                                    <button type="button" class="btn btn-custom btn-primary " data-toggle="modal" data-target="#update-suggestion-{{ suggest[0].id }}">{{ 'suggestion.button.update_suggestion' | trans }}</button>
+                                </td>
+                                {% endif %}
+                            </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                    {% if maxPages > 1 %}
+                      <ul class="pagination pagination-sm">
+                          {# `«` arrow  #}
+                          <li {{ thisPage == 1 ? 'class="disabled"' }}>
+                              <a href="{{ path( indexUrl, {page: thisPage-1 < 1 ? 1 : thisPage-1}) }}">«</a>
+                          </li>
+
+                          {# Render each page number #}
+                          {% for i in 1..maxPages %}
+                          <li {{ thisPage == i ? 'class="active"' }}>
+                          <a href="{{ path( indexUrl, {page: i}) }}">{{ i }}</a>
+                          </li>
+                          {% endfor %}
+
+                          {# `»` arrow #}
+                          <li {{ thisPage == maxPages ? 'class="disabled"' }}>
+                              <a href="{{ path(indexUrl, {page: thisPage+1 <= maxPages ? thisPage+1 : thisPage}) }}">»</a>
+                          </li>
+                      </ul>
+                    {% endif %}
+                </div>
+            </div>
+
+        </div>
+      <!-- modal -->
+      <div class="modal fade" id="rate-suggestion" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel1" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3 class="modal-title h3-title" id="exampleModalLabel1">Give your's rate for wish
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button></h3>
+            </div>
+            <form method="POST" action="{{ rate_suggest }}" class="rating-form">
+            <div class="modal-body">
+              <input type="hidden" class="rating" data-fractions="2" name="score" data-filled="fa fa-star fa-2x" data-empty="fa fa-star-o fa-2x" required="required" />
+              <input type="hidden" name="suggest_id" value="" id="sgid"/>
+            </div>
+            <div class="modal-footer">
+              <button type="submit" class="btn btn-primary btn-custom">{{ 'suggestion.label.evaluate' | trans }}</button>
+            </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+        <div class="modal fade" id="add-suggestion" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel2" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3 class="modal-title h3-title" id="exampleModalLabel2">{{ 'suggestion.text.wish_title' | trans }}
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button></h3>
+                    </div>
+                    <div class="modal-body">
+                        <form method="POST" action="{{ add_suggest }}" >
+                            <div class="form-group">
+                                <label for="recipient-name" class="form-control-label">{{ 'suggestion.label.category' | trans }}:</label>
+                                <select class="form-control" name="category">
+                                    <option value="Feature">{{ 'category.feature' | trans }}</option>
+                                    <option value="Design">{{ 'category.design' | trans }}</option>
+                                    <option value="Idea">{{ 'category.idea' | trans }}</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="message-text" class="form-control-label">{{ 'suggestion.label.description' | trans }}:</label>
+                                <textarea rows="10" style="resize:none" class="form-control" name="content" id="message-text" required="required"></textarea>
+                            </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary btn-custom">{{ 'suggestion.button.create' | trans }}</button>
+                    </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {%   set cc = 2 %}
+        {% for suggest in suggestions %}
+        {%  set cc = cc+1 %}
+        <div class="modal fade" id="update-suggestion-{{ suggest[0].id }}" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel{{ cc }}" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3 class="modal-title h3-title" id="exampleModalLabel{{ cc }}">{{ 'suggestion.text.wish_title_update' | trans }}
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button></h3>
+                    </div>
+                    <div class="modal-body">
+                        <form method="POST" action="{{ path(update_suggest_r,{'id':suggest[0].id}) }}" >
+                            <div class="form-group">
+                                <label for="recipient-name" class="form-control-label">{{ 'suggestion.label.category' | trans }}:</label>
+                                <select class="form-control" name="category">
+                                    <option value="Feature"
+                                            {%  if suggest[0].category == "Feature" %}
+                                                 selected="selected"
+                                            {% endif %}>{{ 'category.feature' | trans }}</option>
+                                    <option value="Design"
+                                            {%  if suggest[0].category == "Design" %}
+                                                    selected="selected"
+                                            {% endif %}>{{ 'category.design' | trans }}</option>
+                                    <option value="Idea"
+                                            {%  if suggest[0].category == "Idea" %}
+                                                 selected="selected"
+                                            {% endif %}>{{ 'category.idea' | trans }}</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="message-text" class="form-control-label">{{ 'suggestion.label.description' | trans }}:</label>
+                                <textarea rows="10" style="resize:none" class="form-control" name="content" id="message-text" required="required">{{  suggest[0].content | e }}</textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="suggestion_status" class="form-control-label">{{ 'suggestion.label.status' | trans }}:</label>
+                                <select class="form-control" name="suggestion_status" {% if not is_admin %} disabled="disabled" {% endif %} >
+                                    <option value="1" {% if suggest[0].suggestStatus  == 1 %}selected="selected"{% endif %} >{{ 'options.select' | trans }}</option>
+                                    <option value="2" {% if suggest[0].suggestStatus  == 2 %}selected="selected"{% endif %} >{{ 'options.completed' | trans }}</option>
+                                    <option value="3" {% if suggest[0].suggestStatus  == 3 %}selected="selected"{% endif %} >{{ 'options.planed' | trans }}</option>
+                                    <option value="4" {% if suggest[0].suggestStatus  == 4 %}selected="selected"{% endif %} >{{ 'options.denied' | trans }}</option>
+                                    <option value="5" {% if suggest[0].suggestStatus  == 5 %}selected="selected"{% endif %} >{{ 'options.underreviews' | trans }}</option>
+                                    <option value="6" {% if suggest[0].suggestStatus  == 6 %}selected="selected"{% endif %} >{{ 'options.wehavethis' | trans }}</option>
+                                </select>
+
+                            </div>
+                            <div class="form-group">
+                                <label for="suggestion_plan" class="form-control-label">{{ 'suggestion.label.plancomplete' | trans }}:</label>
+
+                                <div class='input-group date datetimepicker'>
+                                    <input type='text' class="form-control" value="{% if suggest[0].planComplete %}{{ suggest[0].planComplete.format("d M y")  }}{%  endif %}" {% if not is_admin %} disabled="disabled" {% endif %}  name="suggestion_plan" />
+                                    <span class="input-group-addon">
+                                          <span class="glyphicon glyphicon-calendar"></span>
+                                      </span>
+                                </div>
+                            </div>
+
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary btn-custom">{{ 'suggestion.button.update' | trans }}</button>
+                    </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+
+    </section>
+    <div style="display:none" id="fix_twig_error">{{ path(update_suggest_status_r,{'id':0}) }}</div>
+    <div style="display:none" id="fix_twig_error2">{{ path(update_suggest_plan_r,{'id':0}) }}</div>
+    <footer>
+      <div class="text-center">
+        <p>&copy; App {{ render(controller('AppBundle:Logo:info')) }}</p>
+      </div>
+    </footer>
+    <div id="fb-root"></div>
+{% endblock content %}
+{% block javascripts %}
+    <!-- jQuery -->
+    <script src="{{ asset('/assets/js/jquery.js') }}"></script>
+    <!-- Bootstrap JavaScript -->
+    <script src="{{ asset('/assets/vendor/bootstrap/js/bootstrap.min.js') }}"></script>
+    <script src="{{ asset('/assets/js/main.js') }}"></script>
+    <script src="{{ asset('/assets/js/moment.min.js') }}"></script>
+    <script src="{{ asset('/assets/vendor/datetimepicker/bootstrap-datetimepicker.js') }}"></script>
+    <script src="{{ asset('/assets/js/bootstrap-rating.js') }}"></script>
+    <!-- Social networks -->
+    <script>(function(d, s, id) {
+      var js, fjs = d.getElementsByTagName(s)[0];
+      if (d.getElementById(id)) return;
+      js = d.createElement(s); js.id = id;
+      js.src = "//connect.facebook.net/vi_VN/sdk.js#xfbml=1&version=v2.9&appId=290338634401427";
+      fjs.parentNode.insertBefore(js, fjs);
+    }(document, 'script', 'facebook-jssdk'));</script>
+    <script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
+    <script>
+    $('#language-box').on('change', function(ev) {
+      var value = $('#language-box :selected').val();
+      if (value != 'en') {
+        location.href = '/' + value;
+      } else {
+        location.href = '/';
+      }
+    });
+    $('.datetimepicker').datetimepicker({
+      format: 'D MMM Y'
+    });
+    var minimized_elements = $('.minimize');
+
+    minimized_elements.each(function(){
+        var t = $(this).text();
+        if(t.length < 250 ) return;
+
+        $(this).html(
+            t.slice(0,250)+'<span>... </span><a href="#" class="more"><i class="fa fa-sort-desc fa-x"></i></a>'+
+            '<span style="display:none;">'+ t.slice(250,t.length)+' <a href="#" class="less"><i class="fa fa-sort-asc"></i></a></span>'
+        );
+
+    });
+
+    $('a.more', minimized_elements).click(function(event){
+        event.preventDefault();
+        $(this).hide().prev().hide();
+        $(this).next().show();
+    });
+
+    $('a.less', minimized_elements).click(function(event){
+        event.preventDefault();
+        $(this).parent().hide().prev().show().prev().show();
+    });
+    $('input.rating').rating();
+    $('.rating').each(function () {
+      $('<span class="label label-default hidden"></span>')
+        .text($(this).val() || ' ')
+        .insertAfter(this);
+    });
+    $('.rating').on('change', function () {
+      $(this).next('.label').text($(this).val());
+    });
+    $('.fa-question-circle').tooltip();
+
+    $('.rate-btn').on('click', function() {
+      $('#sgid').val($(this).data('suggestion-id'));
+    });
+
+    var suggestids=[
+        {% for suggest in suggestions %}
+        {{ suggest[0].id }},
+        {% endfor %}
+    ];
+
+    $( '.datetimepicker').datetimepicker().on('dp.change',function(e){
+
+        var u = e.target.id; u = u.replace("_date","");
+        if (u) {
+            updateSuggestionPlan(u);
+        }
+    });
+
+
+
+
+    function sfilter(){
+
+
+        var e = document.getElementById('filter_suggestion_status');
+        var f_suggestion_status = e.options[e.selectedIndex].value;
+        e = document.getElementById('filter_category');
+        var f_category= e.options[e.selectedIndex].value;
+
+        var category;
+        var suggestion_status;
+        var tr_suggest;
+        var i;
+        var id;
+        for (i=0 ; i < suggestids.length; i++){
+            id = suggestids[i];
+            //console.log(id+ " ");
+            category = document.getElementById('category['+id+']').innerHTML;
+            e = document.getElementById('suggestion_status['+id+']');
+            suggestion_status = e.options[e.selectedIndex].value;
+            //console.log(category+" "+suggestion_status+" ");
+            tr_suggest = document.getElementById('tr_suggest['+id+']');
+            if (
+                ((suggestion_status!=f_suggestion_status)&&(f_suggestion_status!="All"))
+                ||((category!=f_category)&(f_category!="All"))
+            ){
+                tr_suggest.style.display="none";
+            }  else
+                tr_suggest.style.display="";
+
+        }
+
+
+
+
+    }
+    var sortorder = 1;
+
+    function sortTable() {
+        var table, rows, switching, i, x, y, shouldSwitch,str1,b1,b2,str2,t1,t2;
+        table = document.getElementById("suggestion_table");
+        switching = true;
+        /*Make a loop that will continue until
+        no switching has been done:*/
+        while (switching) {
+            //start by saying: no switching is done:
+            switching = false;
+            rows = table.getElementsByTagName("TR");
+            /*Loop through all table rows (except the
+            first, which contains table headers):*/
+            for (i = 1; i < (rows.length - 1); i++) {
+                //start by saying there should be no switching:
+                shouldSwitch = false;
+                /*Get the two elements you want to compare,
+                one from current row and one from the next:*/
+                x = rows[i].getElementsByTagName("TD")[0];
+                y = rows[i + 1].getElementsByTagName("TD")[0];
+                str1 = x.innerHTML; str2 = y.innerHTML;
+                t1 = str1.indexOf("xxx__",0);
+                t2 = str1.indexOf(">",t1)+1;
+                t1 = str1.indexOf("<",t2)-1;
+                b1 = str1.substring(t2,t1-1);
+
+                t1 = str2.indexOf("xxx__");
+                t2 = str2.indexOf('>',t1)+1;
+                t1 = str2.indexOf('<',t2)-1;
+                b2 = str2.substring(t2,t1-1);
+
+                //check if the two rows should switch place:
+
+                if ( (parseFloat(b1.toLowerCase()) * sortorder ) < (parseFloat(b2.toLowerCase()) * sortorder) ) {
+
+                    //if so, mark as a switch and break the loop:
+                    shouldSwitch= true;
+
+                    break;
+                }
+            }
+            if (shouldSwitch) {
+                /*If a switch has been marked, make the switch
+                and mark that a switch has been done:*/
+                rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+                switching = true;
+            }
+        }
+    }
+
+    function sort_suggestions(){
+        sortorder = sortorder * -1;
+        sortTable();
+    }
+
+    function updateSuggestionStatus(id){
+        var e = document.getElementById('suggestion_status['+id+']');
+        var suggestion_status = e.options[e.selectedIndex].value;
+        var url = document.getElementById('fix_twig_error').innerHTML;
+        url = url.replace("0",id);
+        var request = $.ajax({
+            url:  url,
+            method: "POST",
+            data: { suggestion_status : suggestion_status },
+            dataType: "text"
+        }).done(function( html ) {
+
+        });
+
+    }
+
+    function updateSuggestionPlan(id){
+
+        var e = document.getElementById(id);
+
+        var suggestion_plan = e.value;
+
+
+        var url = document.getElementById('fix_twig_error2').innerHTML;
+        id = id.replace('suggestion_plan[',"");
+        id = id.replace(']',"");
+        url = url.replace("0",id);
+
+        var request = $.ajax({
+            url:  url,
+            method: "POST",
+            data: { suggestion_plan : suggestion_plan },
+            dataType: "text"
+        }).done(function( html ) {
+
+        });
+
+    }
+    </script>
+
+
+{% endblock javascripts %}
